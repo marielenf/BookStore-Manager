@@ -201,6 +201,29 @@ VALUES
     );
 
 
+-- 2.5 Exemplos de UPDATE e DELETE
+-- A transação é revertida ao final para preservar os dados dos seeds
+-- utilizados pelas consultas de conferência e pelos relatórios.
+BEGIN;
+
+UPDATE clientes
+SET telefone = '48999990099'
+WHERE email = 'bruno.lima@email.com'
+RETURNING id, nome, telefone;
+
+-- Este livro não possui empréstimos associados; NOT EXISTS protege a FK.
+DELETE FROM livros
+WHERE isbn = '9788535910661'
+    AND NOT EXISTS (
+            SELECT 1
+            FROM emprestimos
+            WHERE emprestimos.livro_id = livros.id
+    )
+RETURNING id, titulo;
+
+ROLLBACK;
+
+
 -- ============================================================
 -- 3. CONSULTAS DE CONFERÊNCIA DOS DADOS
 -- ============================================================
