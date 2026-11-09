@@ -90,6 +90,44 @@ test("empréstimos respeitam disponibilidade e validam a devolução", async () 
   await assert.rejects(() => loanService.registerReturn(loan.id), /já foi devolvido/);
 });
 
+test("empréstimos podem ser atualizados sem exceder disponibilidade e removidos", async () => {
+  const { bookService, loanService } = createServices();
+  const extraLoan = await loanService.create({
+    livroId: 3,
+    clienteId: 1,
+    dataEmprestimo: "2026-11-07",
+    dataPrevistaDevolucao: "2026-11-21",
+  });
+
+  await assert.rejects(
+    () => loanService.update(2, {
+      livroId: 3,
+      clienteId: 2,
+      dataEmprestimo: "2026-11-01",
+      dataPrevistaDevolucao: "2026-11-15",
+      dataDevolucao: null,
+    }),
+    /disponíveis/,
+  );
+
+  const updated = await loanService.update(2, {
+    livroId: 1,
+    clienteId: 3,
+    dataEmprestimo: "2026-11-01",
+    dataPrevistaDevolucao: "2026-11-18",
+    dataDevolucao: null,
+  });
+  assert.equal(updated.clienteId, 3);
+  assert.equal(updated.dataPrevistaDevolucao, "2026-11-18");
+
+  await loanService.delete(2);
+  assert.equal(await bookService.getAvailableQuantity(1), 2);
+  await assert.rejects(() => loanService.delete(999), /não encontrado/);
+
+  await loanService.delete(extraLoan.id);
+  assert.equal(await bookService.getAvailableQuantity(3), 1);
+});
+
 test("exclusões preservam autores, livros e clientes referenciados", async () => {
   const { authorService, bookService, clientService } = createServices();
   await assert.rejects(() => authorService.delete(1), /possui livros/);
