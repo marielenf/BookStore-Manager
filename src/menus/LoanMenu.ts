@@ -30,7 +30,7 @@ export class LoanMenu {
     });
 
     while (active) {
-      console.log("\nEmpréstimos\n1. Listar\n2. Consultar por ID\n3. Registrar empréstimo\n4. Registrar devolução\n0. Voltar");
+      console.log("\nEmpréstimos\n1. Listar\n2. Consultar por ID\n3. Registrar empréstimo\n4. Registrar devolução\n5. Atualizar empréstimo\n6. Remover empréstimo\n0. Voltar");
       await runSafely(async () => {
         const option = await promptInteger(this.terminal, "Escolha uma opção");
         if (option === 0) {
@@ -54,6 +54,17 @@ export class LoanMenu {
             await this.showLoan(await this.loanController.registerReturn(id, returnDate ?? undefined));
             break;
           }
+          case 5: {
+            const id = await promptInteger(this.terminal, "ID do empréstimo");
+            const current = await this.loanController.getLoan(id);
+            const updated = await this.loanController.updateLoan(id, await this.promptUpdatedLoanData(current));
+            await this.showLoan(updated);
+            break;
+          }
+          case 6:
+            await this.loanController.deleteLoan(await promptInteger(this.terminal, "ID do empréstimo"));
+            console.log("Empréstimo removido.");
+            break;
           default:
             console.log("Opção inválida.");
         }
@@ -93,6 +104,24 @@ export class LoanMenu {
       clienteId: await promptInteger(this.terminal, "ID do cliente"),
       dataEmprestimo: await promptText(this.terminal, "Data do empréstimo (AAAA-MM-DD)"),
       dataPrevistaDevolucao: await promptText(this.terminal, "Data prevista para devolução (AAAA-MM-DD)"),
+    };
+  }
+
+  private async promptUpdatedLoanData(current: LoanData): Promise<Omit<LoanData, "id">> {
+    return {
+      livroId: await promptInteger(this.terminal, "ID do livro", current.livroId),
+      clienteId: await promptInteger(this.terminal, "ID do cliente", current.clienteId),
+      dataEmprestimo: await promptText(this.terminal, "Data do empréstimo (AAAA-MM-DD)", current.dataEmprestimo),
+      dataPrevistaDevolucao: await promptText(
+        this.terminal,
+        "Data prevista para devolução (AAAA-MM-DD)",
+        current.dataPrevistaDevolucao,
+      ),
+      dataDevolucao: await promptOptionalText(
+        this.terminal,
+        "Data de devolução (AAAA-MM-DD; - limpa)",
+        current.dataDevolucao,
+      ),
     };
   }
 }

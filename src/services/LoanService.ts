@@ -5,6 +5,7 @@ import { LoanRepository } from "../repositories/LoanRepository.ts";
 import { getCurrentDateString, isValidDateString } from "../utils/date.ts";
 
 type NewLoanData = Omit<LoanData, "id" | "dataDevolucao">;
+type UpdateLoanData = Omit<LoanData, "id">;
 
 export class LoanService {
   private readonly loanRepository: LoanRepository;
@@ -35,15 +36,7 @@ export class LoanService {
   }
 
   async create(data: NewLoanData): Promise<LoanData> {
-    const book = await this.bookRepository.findById(data.livroId);
-    if (!book) {
-      throw new Error("Livro não encontrado.");
-    }
-
-    if (!(await this.clientRepository.findById(data.clienteId))) {
-      throw new Error("Cliente não encontrado.");
-    }
-
+    const book = await this.validateReferences(data.livroId, data.clienteId);
     this.validateLoanDates(data.dataEmprestimo, data.dataPrevistaDevolucao);
 
     const loans = await this.loanRepository.findAll();
@@ -55,6 +48,45 @@ export class LoanService {
     }
 
     return this.loanRepository.create({ ...data, dataDevolucao: null });
+  }
+
+  async update(id: number, data: UpdateLoanData): Promise<LoanData> {
+    const currentLoan = await this.loanRepository.findById(id);
+    if (!currentLoan) {
+      throw new Error("Empréstimo não encontrado.");
+    }
+
+    const book = await this.validateReferences(data.livroId, data.clienteId);
+    this.validateLoanDates(data.dataEmprestimo, data.dataPrevistaDevolucao);
+    this.validateReturnDate(data.dataEmprestimo, data.dataDevolucao);
+
+    if (data.dataDevolucao === null) {
+      const loans = await this.loanRepository.findAll();
+      const activeLoansForBook = loans.filter(
+        (loan) =>
+          loan.id !== id &&
+          loan.livroId === book.id &&
+          loan.dataDevolucao === null,
+      ).length;
+
+      if (book.quantidadeExemplares - activeLoansForBook < 1) {
+        throw new Error("Não há exemplares disponíveis para este empréstimo.");
+      }
+    }
+
+    const updatedLoan = await this.loanRepository.update(id, data);
+    if (!updatedLoan) {
+      throw new Error("Empréstimo não encontrado.");
+    }
+
+    return updatedLoan;
+  }
+
+  async delete(id: number): Promise<void> {
+    const deleted = await this.loanRepository.delete(id);
+    if (!deleted) {
+      throw new Error("Empréstimo não encontrado.");
+    }
   }
 
   async registerReturn(id: number, returnDate = getCurrentDateString()): Promise<LoanData> {
@@ -92,6 +124,25 @@ export class LoanService {
 
     if (dueDate < loanDate) {
       throw new Error("A data prevista para devolução não pode anteceder o empréstimo.");
+    }
+  }
+
+  private async validateReferences(bookId: number, clientId: number) {
+    const book = await this.bookRepository.findById(bookId);
+    if (!book) {
+      throw new Error("Livro não encontrado.");
+    }
+
+    if (!(await this.clientRepository.findById(clientId))) {
+      throw new Error("Cliente não encontrado.");
+    }
+
+    return book;
+  }
+
+  private validateReturnDate(loanDate: string, returnDate: string | null): void {
+    if (returnDate !== null && (!isValidDateString(returnDate) || returnDate < loanDate)) {
+      throw new Error("A data de devolução deve ser válida e não pode anteceder o empréstimo.");
     }
   }
 }

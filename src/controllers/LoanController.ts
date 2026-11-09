@@ -2,6 +2,7 @@ import type { LoanData } from "../models/Loan.ts";
 import { LoanService } from "../services/LoanService.ts";
 
 type NewLoanData = Omit<LoanData, "id" | "dataDevolucao">;
+type UpdateLoanData = Omit<LoanData, "id">;
 
 export class LoanController {
   private readonly loanService: LoanService;
@@ -20,6 +21,14 @@ export class LoanController {
 
   async createLoan(data: NewLoanData): Promise<LoanData> {
     return this.loanService.create(data);
+  }
+
+  async updateLoan(id: number, data: UpdateLoanData): Promise<LoanData> {
+    return this.loanService.update(id, data);
+  }
+
+  async deleteLoan(id: number): Promise<void> {
+    await this.loanService.delete(id);
   }
 
   async registerReturn(id: number, returnDate?: string): Promise<LoanData> {
