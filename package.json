@@ -10,7 +10,8 @@
     "dev": "node --watch src/main.ts",
     "build": "tsc",
     "start": "node dist/main.js",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "npm run build && node --test"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
